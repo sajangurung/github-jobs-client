@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import './App.scss';
 import SearchBar from './search-bar/SearchBar';
+import JobCardList from './job-card-list/JobCardList';
+import * as axios from 'axios';
 
 class App extends Component {
 	constructor(props) {
@@ -21,8 +23,30 @@ class App extends Component {
 		});
 	}
 
+	handleResponse = (response) => {
+		let newJobs = response.data;
+		if (this.state.pageIndex > 1) {
+			let currentJobs = this.state.jobs;
+
+			newJobs = currentJobs.concat(newJobs);
+		}
+
+		this.setState({
+			jobs: newJobs
+		});
+	}
+
 	handleError = (e) => {
 		console.log(e);
+	}
+
+	showMore = (e) => {
+		const newPageIndex = this.state.pageIndex + 1;
+		this.setState({
+			pageIndex: newPageIndex
+		}, () => {
+			this.search();
+		});
 	}
 
 	handleKeywordUpdate = (keyword) => {
@@ -30,6 +54,8 @@ class App extends Component {
 			this.setState({
 				searchTerm: keyword,
 				newSearch: false
+			}, () => {
+				this.search();
 			})
 
 			return;
@@ -39,8 +65,24 @@ class App extends Component {
 			this.setState({
 				searchTerm: keyword,
 				newSearch: true
+			}, () => {
+				this.search();
 			})
 		}
+	}
+
+	/**
+	 * Search
+	 */
+	search = () => {
+		this.toggleLoading();
+
+		const { searchTerm, pageIndex } = this.state;
+		axios.get(`http://localhost:8000/api/jobs?description=${searchTerm}&page=${pageIndex}`)
+			.then(response => this.handleResponse(response))
+			.catch(error => this.handleError(error))
+			.then(_ => this.toggleLoading());
+
 	}
 
 	render() {
@@ -53,6 +95,24 @@ class App extends Component {
 							loading={this.state.loading}/>
 					</div>
 				</div>
+
+				<div className="row mt-4">
+					<JobCardList jobs={this.state.jobs} />
+				</div>
+
+				{this.state.jobs.length > 0 &&
+					<div className="row mx-auto mt-4">
+						<button className="btn btn-link mx-auto" onClick={this.showMore}>Show More</button>
+					</div>
+				}
+
+				{this.state.loading &&
+					<div className="row mx-auto">
+						<div className="spinner-grow text-primary mx-auto">
+						</div>
+					</div>
+				}
+
 			</div>
 		);
 	}
